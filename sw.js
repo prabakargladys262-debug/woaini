@@ -93,8 +93,8 @@ self.addEventListener('message', (event) => {
         if (bgMode === 'focus') {
           self.registration.showNotification('🎉 专注达成！', {
             body: `${bgSubject} 专注完成，开始休息吧！`,
-            icon: 'icons/icon-192x192.png',
-            badge: 'icons/icon-192x192.png',
+            icon: 'icon-192x192.png',
+            badge: 'icon-192x192.png',
             tag: 'focus-complete',
             requireInteraction: true,
             vibrate: [200, 100, 200]
@@ -102,8 +102,8 @@ self.addEventListener('message', (event) => {
         } else if (bgMode === 'rest') {
           self.registration.showNotification('⏰ 休息结束！', {
             body: '准备好开始下一阶段的专注了吗？',
-            icon: 'icons/icon-192x192.png',
-            badge: 'icons/icon-192x192.png',
+            icon: 'icon-192x192.png',
+            badge: 'icon-192x192.png',
             tag: 'rest-complete',
             requireInteraction: true,
             vibrate: [200, 100, 200, 100, 200]
@@ -141,8 +141,8 @@ self.addEventListener('message', (event) => {
   else if (data.type === 'SHOW_NOTIFICATION') {
     self.registration.showNotification(data.title || '消息', {
       body: data.body || '',
-      icon: 'icons/icon-192x192.png',
-      badge: 'icons/icon-192x192.png',
+      icon: 'icon-192x192.png',
+      badge: 'icon-192x192.png',
       tag: 'char-msg-' + Date.now(),
       data: { url: self.location.origin }
     });
