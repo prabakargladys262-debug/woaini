@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#B399FF">
+  <meta name="theme-color" content="transparent">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="专注陪伴">
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="icon-192x192.png">
   
   <script src="https://cdn.staticfile.net/echarts/5.4.3/echarts.min.js"></script>
   <script src="https://cdn.staticfile.net/localforage/1.10.0/localforage.min.js"></script>
@@ -18,10 +18,10 @@
     :root {
       --main-color-rgb: 179, 153, 255; 
       --main-color: rgb(var(--main-color-rgb));
-      --glass-bg: rgba(var(--main-color-rgb), 0.22); 
-      --glass-border: rgba(var(--main-color-rgb), 0.4);
-      --card-bg-base: rgba(255, 255, 255, 0.82); 
-      --card-bg-tint: rgba(var(--main-color-rgb), 0.18); 
+      --glass-bg: rgba(var(--main-color-rgb), 0.10); 
+      --glass-border: rgba(var(--main-color-rgb), 0.25);
+      --card-bg-base: rgba(255, 255, 255, 0.35); 
+      --card-bg-tint: rgba(var(--main-color-rgb), 0.08); 
       --icon-unactive: rgba(0, 0, 0, 0.45);
     }
 
@@ -44,9 +44,9 @@
     input, textarea { user-select: text !important; caret-color: var(--main-color) !important; }
 
     .solid-card {
-      background: linear-gradient(var(--card-bg-base), var(--card-bg-base)), linear-gradient(var(--card-bg-tint), var(--card-bg-tint)) !important;
-      background-blend-mode: normal; backdrop-filter: blur(25px) saturate(180%); 
-      border: 2px solid var(--glass-border) !important; border-radius: 15px; padding: 15px; box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      background: rgba(255, 255, 255, 0.25) !important;
+      backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border: 1.5px solid rgba(var(--main-color-rgb), 0.2) !important; border-radius: 15px; padding: 15px; box-shadow: 0 6px 20px rgba(0,0,0,0.06);
     }
 
     .solid-card h3 { margin-top: 0; margin-bottom: 12px; color: var(--main-color); border-bottom: 2px dashed var(--glass-border); padding-bottom: 6px; font-size: 14px; }
@@ -73,8 +73,8 @@
     
     .mini-pet {
       width: 250px; height: 250px; aspect-ratio: 1 / 1; border-radius: 50%; 
-      background-color: var(--glass-bg); backdrop-filter: blur(35px) saturate(200%); 
-      border: 3px solid var(--glass-border); padding: 15px; box-shadow: 0 10px 30px rgba(var(--main-color-rgb), 0.2);
+      background-color: rgba(var(--main-color-rgb), 0.08); backdrop-filter: blur(50px) saturate(200%); -webkit-backdrop-filter: blur(50px) saturate(200%);
+      border: 2px solid rgba(var(--main-color-rgb), 0.18); padding: 15px; box-shadow: 0 10px 30px rgba(var(--main-color-rgb), 0.12);
       display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; position: relative; overflow: hidden; 
     }
 
@@ -102,12 +102,12 @@
     .side-area { width: 420px; max-width: 100%; display: flex; flex-direction: column; background: transparent !important; border: none !important; box-shadow: none !important; }
 
     .chat-msg {
-      background-color: rgba(var(--main-color-rgb), 0.25); backdrop-filter: blur(15px); border: 2px solid var(--glass-border);
-      border-radius: 12px; padding: 10px 14px; font-size: 13px; line-height: 1.5; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      background-color: rgba(var(--main-color-rgb), 0.12); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%); border: 1.5px solid rgba(var(--main-color-rgb), 0.2);
+      border-radius: 12px; padding: 10px 14px; font-size: 13px; line-height: 1.5; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.04);
       position: relative; align-self: flex-start; max-width: 90%; transition: opacity 0.5s ease, transform 0.5s ease;
       color: #ffffff; text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.8), 0px 0px 1px rgba(0, 0, 0, 0.9); 
     }
-    .chat-msg::before { content: ''; position: absolute; top: 14px; left: -10px; border-width: 6px 10px 6px 0; border-style: solid; border-color: transparent var(--glass-border) transparent transparent; }
+    .chat-msg::before { content: ''; position: absolute; top: 14px; left: -10px; border-width: 6px 10px 6px 0; border-style: solid; border-color: transparent rgba(var(--main-color-rgb), 0.2) transparent transparent; }
 
     .side-view { display: none; flex-direction: column; gap: 12px; animation: slideIn 0.3s ease forwards;}
     .side-view.active { display: flex; }
@@ -117,7 +117,7 @@
 
     .task-list-container { max-height: 380px; overflow-y: auto; padding-right: 5px; display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
     .task-card { 
-      background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.4)); border: 1px solid var(--glass-border); border-radius: 12px; padding: 12px 16px; 
+      background: rgba(255,255,255,0.2); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(var(--main-color-rgb), 0.15); border-radius: 12px; padding: 12px 16px; 
       display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s; cursor: grab; 
     }
     .task-card:active { cursor: grabbing; }
@@ -554,7 +554,7 @@
           body: JSON.stringify({ 
             model: model, 
             messages: [ 
-              { role: "system", content: `【系统指令】：完全沉浸扮演角色：[${charName}]。忘掉AI身份，展现细腻的神态描写与极强的情感张力。【扮演核心要求】：\n1. 这是你们休息时间的日常聊天。保持极强情感张力，展现细腻动作神态(放括号内)。\n2. 说话必须符合你的职业身份，体现你的职业，如你是总裁则一般看文件，是音乐人或贝斯手一般在编曲等等。\n3. 主动调用设定卡信息，提及NPC或世界观。\n4. 绝对禁止自我解释。第一人称直接输出。\n角色设定（含世界书）：\n${fullPersona}\n主控设定：\n${userPersona}\n【绝对格式指令】：必须且只能返回一个包含 3 到 4 个短句动作或对话的合法 JSON 字符串数组。示范：["(递温水) 还在看书呢？", "别太累了，注意休息！", "我会一直陪着你的。"]` }, 
+              { role: "system", content: `【系统指令】：完全沉浸扮演角色：[${charName}]。忘掉AI身份，展现细腻的神态描写与极强的情感张力。【扮演核心要求】：\n1. 这是你们休息时间的日常聊天。保持极强情感张力，展现细腻动作神态(放括号内)。\n2. 说话必须符合你的职业身份，体现你的职业，如你是总裁则一般看文件，是音乐人或贝斯手一般在编曲等等。\n3. 主动调用设定卡信息，提及NPC或世界观。\n4. 绝对禁止自我解释。第一人称直接输出。\n5. 【绝对禁止】禁止生成任何状态栏、属性面板、数值面板、HP/MP/好感度等数据框。只输出纯对话和动作描写。\n角色设定（含世界书）：\n${fullPersona}\n主控设定：\n${userPersona}\n【绝对格式指令】：必须且只能返回一个包含 3 到 4 个短句动作或对话的合法 JSON 字符串数组。示范：["(递温水) 还在看书呢？", "别太累了，注意休息！", "我会一直陪着你的。"]` }, 
               { role: "user", content: reason } 
             ], temperature: 0.75 
           })
@@ -571,8 +571,19 @@
           if(match) { try { finalMessagesArray = JSON.parse(match[0]); } catch(e) { finalMessagesArray = aiGeneratedText.split('\n').filter(line => line.trim() !== ''); } } 
           else { finalMessagesArray = aiGeneratedText.split('\n').filter(line => line.trim() !== ''); }
         }
-        renderAggregatedBubbles(finalMessagesArray);
+        renderAggregatedBubbles(finalMessagesArray.map(stripStatusBars));
       } catch (err) { console.error(err); viewChat.innerHTML = `<div class="chat-msg">❌ 思考遇到了波动：${err.message}</div>`; } finally { isThinking = false; }
+    }
+
+    // 【修复5】过滤状态栏/属性面板内容
+    function stripStatusBars(text) {
+      if (typeof text !== 'string') return text;
+      // 移除常见状态栏格式：【状态栏】、[状态栏]、HP:、MP:、好感度:、体力: 等整行或整块
+      text = text.replace(/[\[【〖\{][^\]】〗\}]*(?:状态|属性|数值|面板|HP|MP|好感|体力|饥饿|心情|理智|san值|san|SAN)[^\]】〗\}]*[\]】〗\}]/gi, '');
+      text = text.replace(/(?:^|\n).*?(?:HP|MP|好感度|体力值|饥饿度|心情值|理智值|SAN值|状态栏)\s*[:：]\s*\S+.*$/gmi, '');
+      text = text.replace(/[-─━═]{3,}[\s\S]*?[-─━═]{3,}/g, ''); // 分隔线包裹的面板
+      text = text.replace(/\n{3,}/g, '\n').trim();
+      return text;
     }
 
     // ==========================================
@@ -597,7 +608,7 @@
       isThinking = true;
       try {
         // 【修复4】system prompt 强调短对话，禁止长篇大论
-        const systemPrompt = `【系统设定】：你完全沉浸扮演角色：[${charName}]。忘掉你是人工智能，拒绝打破第四面墙。\n角色设定（含世界书）：\n${fullPersona}\n主控设定：\n${userPersona}\n【扮演要求】：\n1. 这是日常即时聊天。像真人发消息一样，每次只回复1~3句话，简短自然，绝对禁止长篇大段。\n2. 展现细腻动作(放括号内)，说话符合职业身份。\n3. 可以主动提及NPC或世界观，但保持简短口语化。\n4. 第一人称直接输出，像微信聊天一样自然。\n5. 禁止一次性输出超过80个字。`;
+        const systemPrompt = `【系统设定】：你完全沉浸扮演角色：[${charName}]。忘掉你是人工智能，拒绝打破第四面墙。\n角色设定（含世界书）：\n${fullPersona}\n主控设定：\n${userPersona}\n【扮演要求】：\n1. 这是日常即时聊天。像真人发消息一样，每次只回复1~3句话，简短自然，绝对禁止长篇大段。\n2. 展现细腻动作(放括号内)，说话符合职业身份。\n3. 可以主动提及NPC或世界观，但保持简短口语化。\n4. 第一人称直接输出，像微信聊天一样自然。\n5. 禁止一次性输出超过80个字。\n6. 【绝对禁止】禁止生成任何形式的状态栏、属性面板、数值面板、HP/MP/好感度/体力值等数据框或表格。只输出纯对话和动作描写，不要附带任何数值信息。`;
         let contextMessages = chatMemory.length > 12 ? chatMemory.slice(chatMemory.length - 12) : chatMemory;
         const messages = [{ role: "system", content: systemPrompt }, ...contextMessages];
         const endpoint = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
@@ -605,7 +616,7 @@
         const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify({ model: model, messages: messages, temperature: 0.85, max_tokens: 200 }) });
         const responseData = await response.json(); if (responseData.error) throw new Error(responseData.error.message);
 
-        const aiGeneratedText = responseData.choices[0].message.content || "";
+        const aiGeneratedText = stripStatusBars(responseData.choices[0].message.content || "");
         chatMemory.push({role: "assistant", content: aiGeneratedText}); document.getElementById(typingId).remove(); appendChatMessage('assistant', aiGeneratedText); setTempState('msg', 4000);
 
         // 【修复7】后台时推送聊天消息通知
@@ -643,11 +654,41 @@
     }
 
     // ==========================================
-    // 【修复5】后端保活引擎：使用多重策略保证后台计时
+    // 【修复1+2】增强后台保活引擎：多重策略 + 周期性音频心跳
     // ==========================================
     let bgKeepAliveWorker = null;
     let lastTickTime = Date.now();
     let bgTimerCompensation = false;
+    let audioKeepAlive = null; // 无声音频心跳（iOS 专用保活）
+
+    // 策略0: 无声音频保活（iOS Safari/WebKit 唯一可靠的后台保活方式）
+    function startAudioKeepAlive() {
+      try {
+        if (!audioKeepAlive) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            audioKeepAlive = new AudioContext();
+            // 创建一个几乎无声的振荡器（频率1Hz，音量极低）
+            const oscillator = audioKeepAlive.createOscillator();
+            const gainNode = audioKeepAlive.createGain();
+            gainNode.gain.value = 0.001; // 几乎无声
+            oscillator.frequency.value = 1;
+            oscillator.connect(gainNode);
+            gainNode.connect(audioKeepAlive.destination);
+            oscillator.start();
+            console.log('✅ 音频保活引擎已启动');
+          }
+        } else if (audioKeepAlive.state === 'suspended') {
+          audioKeepAlive.resume();
+        }
+      } catch(e) { console.warn('音频保活不可用', e); }
+    }
+    
+    function stopAudioKeepAlive() {
+      if (audioKeepAlive && audioKeepAlive.state === 'running') {
+        audioKeepAlive.suspend();
+      }
+    }
 
     // 策略1: Web Worker 后台线程计时（不受页面可见性影响）
     function createBackgroundWorker() {
@@ -684,14 +725,20 @@
     // 策略2: visibilitychange 时间补偿（页面从后台回到前台时，补算丢失的秒数）
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        // 进入后台：记录时间戳，启用 Worker 补偿
+        // 进入后台：记录时间戳，启用所有保活策略
         lastTickTime = Date.now();
         bgTimerCompensation = true;
         if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('start');
+        startAudioKeepAlive(); // iOS 音频保活
+        // 同步 SW 确保后台计时
+        if ((timerMode === 'focus' || timerMode === 'rest') && !isPaused) {
+          swTimerStart(timerMode);
+        }
       } else {
         // 回到前台：计算丢失的时间并补偿
         bgTimerCompensation = false;
         if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('stop');
+        stopAudioKeepAlive();
         
         if ((timerMode === 'focus' || timerMode === 'rest') && !isPaused) {
           const now = Date.now();
@@ -783,6 +830,7 @@
         setButtonState('⏸ 暂停专注', true); baseState = 'study'; updateAvatarDisplay();
         chatInput.disabled = true; sendChatBtn.disabled = true; chatInput.placeholder = "专注时间到啦，好好学习，等下再聊！";
         requestWakeLock(); // 请求屏幕保持
+        startAudioKeepAlive(); // iOS 音频保活
         startIntervals();
         swTimerStart('focus'); // 同步 SW 后台计时
       } 
@@ -794,10 +842,12 @@
           setButtonState('▶ 继续专注', false); baseState = 'idle'; updateAvatarDisplay();
           chatInput.disabled = false; sendChatBtn.disabled = false; chatInput.placeholder = "在休息时间陪我聊聊吧... (按 Enter 发送)";
           releaseWakeLock();
+          stopAudioKeepAlive();
         } else {
           isPaused = false; setButtonState('⏸ 暂停专注', true); baseState = 'study'; updateAvatarDisplay();
           chatInput.disabled = true; sendChatBtn.disabled = true; chatInput.placeholder = "专注时间到啦，好好学习，等下再聊！";
           requestWakeLock();
+          startAudioKeepAlive();
           startIntervals();
           swTimerStart('focus'); // 同步 SW 恢复
         }
@@ -823,6 +873,7 @@
        if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('stop');
        swTimerStop(); // 同步 SW 停止
        releaseWakeLock();
+       stopAudioKeepAlive();
        timerMode = 'idle'; isPaused = false;
        setButtonState('▶ 开始专注', false);
        currentStudySubject = '自由专注'; subjectLabel.textContent = '自由专注';
@@ -929,7 +980,37 @@
     // ==========================================
     function parseSillyTavernCard(arrayBuffer) {
        const view = new DataView(arrayBuffer); let offset = 8; 
-       while (offset < view.byteLength) { if (offset + 8 > view.byteLength) break; const length = view.getUint32(offset); const type = String.fromCharCode(view.getUint8(offset + 4), view.getUint8(offset + 5), view.getUint8(offset + 6), view.getUint8(offset + 7)); if (type === 'tEXt' || type === 'iTXt') { let keyword = ''; let charOffset = offset + 8; while (view.getUint8(charOffset) !== 0 && charOffset < view.byteLength) { keyword += String.fromCharCode(view.getUint8(charOffset)); charOffset++; } if (keyword === 'chara') { charOffset++; let text = new TextDecoder().decode(new Uint8Array(arrayBuffer, charOffset, length - (charOffset - (offset + 8)))); try { return JSON.parse(atob(text)); } catch(e) { return JSON.parse(text); } } } offset += 12 + length; } throw new Error("元数据解析失败");
+       while (offset < view.byteLength) {
+         if (offset + 8 > view.byteLength) break;
+         const length = view.getUint32(offset);
+         const type = String.fromCharCode(view.getUint8(offset + 4), view.getUint8(offset + 5), view.getUint8(offset + 6), view.getUint8(offset + 7));
+         if (type === 'tEXt' || type === 'iTXt') {
+           let keyword = ''; let charOffset = offset + 8;
+           while (view.getUint8(charOffset) !== 0 && charOffset < view.byteLength) {
+             keyword += String.fromCharCode(view.getUint8(charOffset)); charOffset++;
+           }
+           if (keyword === 'chara') {
+             charOffset++; // 跳过 null 分隔符
+             // 【修复乱码】使用 TextDecoder 正确解码 UTF-8 字节
+             const rawBytes = new Uint8Array(arrayBuffer, charOffset, length - (charOffset - (offset + 8)));
+             const text = new TextDecoder('utf-8').decode(rawBytes).trim();
+             try {
+               // 先尝试 base64 解码（标准 SillyTavern 格式）
+               const decoded = atob(text);
+               // atob 输出的是 Latin-1 字符串，中文 UTF-8 需要再次解码
+               const bytes = new Uint8Array(decoded.length);
+               for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
+               const jsonStr = new TextDecoder('utf-8').decode(bytes);
+               return JSON.parse(jsonStr);
+             } catch(e) {
+               // 不是 base64，直接解析 JSON
+               try { return JSON.parse(text); } catch(e2) { throw new Error("角色卡 JSON 解析失败"); }
+             }
+           }
+         }
+         offset += 12 + length;
+       }
+       throw new Error("未找到角色卡元数据");
     }
 
     // 从角色卡数据中提取世界书条目
