@@ -1,0 +1,24 @@
+{
+  "name": "专注陪伴 - Focus Timer",
+  "short_name": "专注陪伴",
+  "description": "SillyTavern 角色卡计时陪伴插件，支持后台计时与消息通知",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a1a2e",
+  "theme_color": "#B399FF",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

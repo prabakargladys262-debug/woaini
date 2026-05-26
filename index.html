@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#B399FF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="专注陪伴">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  
+  <script src="https://cdn.staticfile.net/echarts/5.4.3/echarts.min.js"></script>
+  <script src="https://cdn.staticfile.net/localforage/1.10.0/localforage.min.js"></script>
+  <script src="https://cdn.staticfile.net/Sortable/1.15.0/Sortable.min.js"></script>
+  
+  <style>
+    :root {
+      --main-color-rgb: 179, 153, 255; 
+      --main-color: rgb(var(--main-color-rgb));
+      --glass-bg: rgba(var(--main-color-rgb), 0.22); 
+      --glass-border: rgba(var(--main-color-rgb), 0.4);
+      --card-bg-base: rgba(255, 255, 255, 0.82); 
+      --card-bg-tint: rgba(var(--main-color-rgb), 0.18); 
+      --icon-unactive: rgba(0, 0, 0, 0.45);
+    }
+
+    /* 【核心修复】清除移动端点击时的灰色闪烁方块 */
+    * { -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background-color: transparent; margin: 0; padding: 20px; 
+      user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh; display: flex; justify-content: center; align-items: center;
+    }
+
+    #app-bg {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background-size: cover; background-position: center; z-index: -1;
+      transition: background-image 0.5s ease;
+    }
+
+    input, textarea { user-select: text !important; caret-color: var(--main-color) !important; }
+
+    .solid-card {
+      background: linear-gradient(var(--card-bg-base), var(--card-bg-base)), linear-gradient(var(--card-bg-tint), var(--card-bg-tint)) !important;
+      background-blend-mode: normal; backdrop-filter: blur(25px) saturate(180%); 
+      border: 2px solid var(--glass-border) !important; border-radius: 15px; padding: 15px; box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+
+    .solid-card h3 { margin-top: 0; margin-bottom: 12px; color: var(--main-color); border-bottom: 2px dashed var(--glass-border); padding-bottom: 6px; font-size: 14px; }
+
+    .form-group { display: flex; flex-direction: column; margin-bottom: 10px; }
+    .form-group label { font-size: 11px; font-weight: bold; color: #444; margin-bottom: 4px; }
+    .form-group input, .form-group textarea, .form-group select {
+      padding: 6px; border: 1px solid rgba(0,0,0,0.15); border-radius: 6px; font-size: 11px; outline: none; background-color: rgba(255,255,255,0.6); color: #000;
+    }
+    textarea:disabled, input:disabled { background-color: rgba(0,0,0,0.05) !important; cursor: not-allowed; }
+
+    .custom-options-list {
+      position: absolute; top: 100%; left: 0; width: 100%; background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(0,0,0,0.15);
+      border-radius: 6px; max-height: 150px; overflow-y: auto; display: none; z-index: 999; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 4px;
+    }
+    .custom-options-list.show { display: block; }
+    .custom-option { padding: 8px 10px; font-size: 11px; cursor: pointer; color: #333; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .custom-option:last-child { border-bottom: none; }
+
+    .app-container { 
+      display: flex; align-items: center; justify-content: center; gap: 30px; 
+      width: 100%; max-width: 850px; flex-wrap: wrap; 
+    }
+    
+    .mini-pet {
+      width: 250px; height: 250px; aspect-ratio: 1 / 1; border-radius: 50%; 
+      background-color: var(--glass-bg); backdrop-filter: blur(35px) saturate(200%); 
+      border: 3px solid var(--glass-border); padding: 15px; box-shadow: 0 10px 30px rgba(var(--main-color-rgb), 0.2);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; position: relative; overflow: hidden; 
+    }
+
+    .avatar-container { 
+      width: 110px; height: 110px; border-radius: 50%; border: 3px solid var(--glass-border); 
+      overflow: hidden; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: -10px; 
+    }
+    .avatar-container img { width: 100%; height: 100%; object-fit: cover; }
+
+    .timer { font-size: 34px; color: var(--main-color); font-weight: bold; margin: 8px 0 4px 0; font-family: 'Courier New', Courier, monospace; text-shadow: 0 1px 2px rgba(255,255,255,0.6); }
+
+    .icon-btn-group { display: flex; justify-content: center; gap: 12px; margin-bottom: 8px; }
+    .icon-btn { background: none; border: none; font-size: 17px; cursor: pointer; color: var(--icon-unactive); transition: transform 0.2s, color 0.2s; padding: 0; }
+    .icon-btn.active-btn { color: var(--main-color); transform: scale(1.1); }
+    .icon-btn:active { transform: scale(0.9); }
+
+    .main-btn { 
+      width: 130px; padding: 9px 0; background-color: var(--main-color); color: white; border: none; border-radius: 20px; 
+      font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(var(--main-color-rgb), 0.35); 
+      margin-bottom: -5px; transition: transform 0.2s, background-color 0.3s;
+    }
+    .main-btn:active { transform: scale(0.95); }
+    .main-btn:disabled { background-color: #ccc !important; box-shadow: none !important; border: none !important; color: white !important; cursor: not-allowed; }
+
+    .side-area { width: 420px; max-width: 100%; display: flex; flex-direction: column; background: transparent !important; border: none !important; box-shadow: none !important; }
+
+    .chat-msg {
+      background-color: rgba(var(--main-color-rgb), 0.25); backdrop-filter: blur(15px); border: 2px solid var(--glass-border);
+      border-radius: 12px; padding: 10px 14px; font-size: 13px; line-height: 1.5; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      position: relative; align-self: flex-start; max-width: 90%; transition: opacity 0.5s ease, transform 0.5s ease;
+      color: #ffffff; text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.8), 0px 0px 1px rgba(0, 0, 0, 0.9); 
+    }
+    .chat-msg::before { content: ''; position: absolute; top: 14px; left: -10px; border-width: 6px 10px 6px 0; border-style: solid; border-color: transparent var(--glass-border) transparent transparent; }
+
+    .side-view { display: none; flex-direction: column; gap: 12px; animation: slideIn 0.3s ease forwards;}
+    .side-view.active { display: flex; }
+    
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--main-color); border-radius: 10px; }
+
+    .task-list-container { max-height: 380px; overflow-y: auto; padding-right: 5px; display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+    .task-card { 
+      background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.4)); border: 1px solid var(--glass-border); border-radius: 12px; padding: 12px 16px; 
+      display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s; cursor: grab; 
+    }
+    .task-card:active { cursor: grabbing; }
+    .task-info { display: flex; flex-direction: column; pointer-events: none; }
+    .task-title { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 4px; }
+    .task-time { font-size: 11px; color: #666; font-family: monospace; }
+    .start-task-btn { background-color: transparent; border: 2px solid var(--main-color); color: var(--main-color); padding: 6px 14px; border-radius: 15px; font-size: 12px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+    
+    .add-task-bar { display: flex; gap: 8px; margin-bottom: 10px; }
+    .add-task-bar input { flex: 1; }
+    .add-task-bar input[type="number"] { max-width: 60px; }
+    .add-task-btn { background-color: var(--main-color); color: white; border: none; border-radius: 6px; padding: 0 12px; cursor: pointer; font-size: 12px; font-weight: bold; }
+
+    #chat-history-container { flex: 1; overflow-y: auto; padding-right: 5px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
+    .history-msg { padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; max-width: 85%; word-wrap: break-word; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .msg-user { align-self: flex-end; background-color: var(--main-color); color: white; border-bottom-right-radius: 2px; }
+    .msg-ai { align-self: flex-start; background-color: rgba(255,255,255,0.65); backdrop-filter: blur(15px); border: 1px solid var(--glass-border); color: #222; font-weight: 500; border-bottom-left-radius: 2px; }
+
+    @keyframes slideIn { from { transform: translateX(-15px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* 【核心修复】拦截苹果移动端 `:hover` 双击判定，只给有鼠标的电脑赋予 hover 样式 */
+    @media (hover: hover) {
+      .icon-btn:hover { color: var(--main-color); transform: scale(1.1); }
+      .start-task-btn:hover { background-color: var(--main-color); color: white; }
+      .custom-option:hover { background-color: var(--card-bg-tint); color: var(--main-color); font-weight: bold; }
+    }
+
+    /* 竖屏手机 */
+    @media (max-width: 768px) and (orientation: portrait) {
+      body { padding: 10px; align-items: flex-start; }
+      .app-container { flex-direction: column; gap: 20px; }
+      .side-area { width: 100%; }
+      .mini-pet { width: 220px; height: 220px; padding: 10px; } 
+      .avatar-container { width: 90px; height: 90px; margin-top: -5px; }
+      .timer { font-size: 30px; }
+    }
+
+    /* 【新增】横屏适配：手机横屏时左右并排布局 */
+    @media (max-height: 500px) and (orientation: landscape) {
+      body { padding: 8px; align-items: center; }
+      .app-container { flex-direction: row; flex-wrap: nowrap; gap: 15px; align-items: flex-start; max-width: 100%; }
+      .mini-pet { width: 180px; height: 180px; padding: 8px; flex-shrink: 0; }
+      .avatar-container { width: 70px; height: 70px; margin-top: -3px; }
+      .timer { font-size: 24px; margin: 4px 0 2px 0; }
+      .icon-btn-group { gap: 8px; margin-bottom: 4px; }
+      .icon-btn { font-size: 14px; }
+      .main-btn { width: 110px; padding: 6px 0; font-size: 12px; }
+      .side-area { width: 0; flex: 1; min-width: 0; max-height: calc(100vh - 20px); overflow-y: auto; }
+      .solid-card { max-height: calc(100vh - 40px) !important; }
+      #current-subject-label { font-size: 9px !important; }
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="app-bg"></div>
+
+  <div class="app-container">
+    <div class="mini-pet">
+      <div class="avatar-container" id="avatar-btn">
+        <img src="" id="avatar-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMTAiIGhlaWdodD0iMTEwIj48cmVjdCB3aWR0aD0iMTEwIiBoZWlnaHQ9IjExMCIgZmlsbD0iI2YwZjBmMCIvPjwvc3ZnPg=='" />
+      </div>
+
+      <div id="current-subject-label" style="font-size: 11px; color: #666; margin-top: 8px; height: 12px; font-weight: bold;">自由专注</div>
+      <div class="timer" id="time-display">25:00</div>
+      
+      <div class="icon-btn-group">
+        <button class="icon-btn active-btn" onclick="switchView('view-chat', this)" title="消息">💬</button>
+        <button class="icon-btn" onclick="switchView('view-tasks', this)" title="待办计划">📋</button>
+        <button class="icon-btn" onclick="switchView('view-rest-chat', this)" title="休息聊天">☕</button>
+        <button class="icon-btn" onclick="switchView('view-stats', this)" title="数据统计">📊</button>
+        <button class="icon-btn" onclick="switchView('view-settings', this)" title="配置中心">⚙️</button>
+      </div>
+
+      <button class="main-btn" id="start-btn">▶ 开始专注</button>
+    </div>
+
+    <div class="side-area">
+      <div class="side-view active" id="view-chat">
+        <div class="chat-msg">主控！全面升级完毕！世界书自动读取、横屏适配、后台保活、通知推送全部上线，快开始我们的自习时间吧！</div>
+      </div>
+
+      <div class="side-view" id="view-tasks">
+        <div class="solid-card" style="height: 460px; display: flex; flex-direction: column;">
+          <h3>📋 学习待办 (长按可拖拽排序)</h3>
+          <div class="add-task-bar">
+            <input type="text" id="new-task-name" placeholder="输入科目/任务名称...">
+            <input type="number" id="new-task-time" placeholder="分钟" value="25">
+            <button class="add-task-btn" onclick="addNewTask()">添加</button>
+          </div>
+          <div class="task-list-container" id="task-list-render"></div>
+        </div>
+      </div>
+
+      <div class="side-view" id="view-rest-chat">
+        <div class="solid-card" style="display: flex; flex-direction: column; height: 460px; padding: 15px;">
+          <h3 style="margin-bottom: 12px; font-size: 15px;">☕ 沉浸休息室</h3>
+          <div id="chat-history-container">
+            <div class="history-msg msg-ai">这里是专属聊天室，我会记住我们聊过的话哦。你想聊点什么？</div>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 10px; align-items: flex-end;">
+            <textarea id="chat-input" placeholder="在休息时间陪我聊聊吧... (按 Enter 发送)" style="flex: 1; height: 44px; resize: none; border-radius: 12px; padding: 10px 12px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.7); outline: none; font-family: inherit; font-size: 12px;"></textarea>
+            <button class="main-btn" id="send-chat-btn" style="width: 60px; height: 44px; margin: 0; border-radius: 12px; font-size: 12px;">发送</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-view" id="view-stats">
+        <div class="solid-card"><h3>🍰 今日真实专注分布</h3><div id="pie-chart-container" style="width: 100%; height: 200px;"></div></div>
+        <div class="solid-card"><h3>📊 近7日专注时长</h3><div id="bar-chart-container" style="width: 100%; height: 200px;"></div></div>
+        <div class="solid-card"><h3>📅 历史学习热力图 (小时)</h3><div id="heatmap-chart-container" style="width: 100%; height: 160px;"></div></div>
+      </div>
+
+      <div class="side-view" id="view-settings">
+        <div class="solid-card" style="max-height: 450px; overflow-y: auto;">
+          <h3>⚙️ 全局接口与基础设定</h3>
+          <div style="display: flex; gap: 10px;">
+             <div class="form-group" style="flex:1;"><label>⏱️ 专注 (分钟)</label><input type="number" id="focus-time-input" value="25" min="1" max="120"></div>
+             <div class="form-group" style="flex:1;"><label>☕ 休息 (分钟)</label><input type="number" id="rest-time-input" value="5" min="1" max="60"></div>
+          </div>
+          
+          <div class="form-group"><label>大模型 Base URL</label><input type="text" id="api-url" placeholder="https://api.deepseek.com/v1"></div>
+          <div class="form-group"><label>API Key</label><input type="password" id="api-key" placeholder="sk-..."></div>
+          
+          <div class="form-group">
+            <label>选择模型</label>
+            <div style="display: flex; gap: 5px;">
+              <div style="flex: 1; position: relative;">
+                <input type="text" id="api-model" placeholder="请先联网获取或手动输入" style="width: 100%; box-sizing: border-box;" autocomplete="off">
+                <div id="custom-model-list" class="custom-options-list"></div>
+              </div>
+              <button class="main-btn" id="fetch-models-btn" style="width: 60px; padding: 4px; font-size: 11px; flex-shrink: 0;">获取</button>
+            </div>
+          </div>
+
+          <div class="form-group"><label>User 人设信息</label><textarea id="user-persona" style="height:30px;"></textarea></div>
+          <div class="form-group"><label>世界书简易规则 (自动从角色卡读取，也可手动补充)</label><textarea id="worldbook" style="height:60px;"></textarea></div>
+          <hr style="border: 1px dashed var(--glass-border); margin: 12px 0;">
+          
+          <h3 style="font-size: 13px; margin-bottom: 5px;">🖼️ 个性化外观</h3>
+          <div class="form-group">
+            <label>全局背景壁纸 (移动端推荐)</label>
+            <div style="display: flex; gap: 5px;">
+               <input type="file" id="bg-file-input" accept="image/*" style="flex: 1;">
+               <button class="main-btn" id="clear-bg-btn" style="width: 60px; padding: 4px; font-size: 11px; background-color:#aaa; box-shadow:none;">清除</button>
+            </div>
+          </div>
+
+          <h3 style="font-size: 13px; margin-bottom: 5px; margin-top:10px;">🎬 角色与差分表情导入</h3>
+          <div class="form-group"><label>静态卡片 (PNG/JSON)</label><input type="file" id="char-file-input" accept=".png,.json"><span id="char-status" style="font-size:10px; color:magenta; font-weight:bold; margin-top:4px;">未导入</span></div>
+          <!-- 【修复3】accept 改为支持所有图片格式 -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="form-group"><label>发呆 (Idle)</label><input type="file" id="gif-idle" accept="image/*"></div>
+            <div class="form-group"><label>学习 (Study)</label><input type="file" id="gif-study" accept="image/*"></div>
+            <div class="form-group"><label>戳戳 (Poke)</label><input type="file" id="gif-poke" accept="image/*"></div>
+            <div class="form-group"><label>发话 (Msg)</label><input type="file" id="gif-msg" accept="image/*"></div>
+          </div>
+          <div style="display:flex; gap:10px; margin-top:12px;">
+            <button class="main-btn" id="save-settings-btn" style="padding: 6px 0; font-size:12px;">💾 保存配置</button>
+            <button class="main-btn" id="custom-color-btn" style="padding: 6px 0; font-size:12px; background-color:#aaa; box-shadow:none;">🎨 换主题色</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <input type="color" id="color-picker" style="visibility: hidden; position: absolute; width: 0; height: 0;" value="#B399FF">
+
+  <script>
+    // ==========================================
+    // 【终极防御引擎】防止 iOS 拒绝本地储存导致界面瘫痪
+    // ==========================================
+    function getLS(key) { try { return localStorage.getItem(key); } catch(e) { return null; } }
+    function setLS(key, val) { try { localStorage.setItem(key, val); } catch(e) { console.warn("储存受限", e); } }
+
+    // ==========================================
+    // 【PWA 核心】Service Worker 注册 + 通知权限
+    // ==========================================
+    let swReady = null;
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => {
+          console.log('✅ Service Worker 注册成功', reg.scope);
+          swReady = reg;
+          // 请求通知权限
+          if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission().then(p => {
+              if (p === 'granted') console.log('✅ 通知权限已获取');
+            });
+          }
+        })
+        .catch(err => console.warn('SW 注册失败:', err));
+
+      // 监听 SW 发来的消息（后台计时 tick / 计时结束）
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        const data = event.data;
+        if (data.type === 'TIMER_TICK') {
+          timeLeft = data.timeLeft;
+          updateTimerDisplay();
+        } else if (data.type === 'TIMER_END') {
+          // SW 已发通知，前端执行状态切换
+          handleTimerEnd();
+        } else if (data.type === 'TIMER_STATE') {
+          // 同步后台计时器状态（页面刷新恢复）
+          if (data.mode !== 'idle' && data.timeLeft > 0) {
+            timeLeft = data.timeLeft;
+            updateTimerDisplay();
+          }
+        }
+      });
+    }
+
+    // 通过 SW 发送通知（PWA 模式下可后台推送）
+    function sendNotification(title, body) {
+      // 优先走 Service Worker（支持后台推送）
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SHOW_NOTIFICATION', title: title, body: body
+        });
+        return;
+      }
+      // 降级：直接用 Notification API
+      if ("Notification" in window && Notification.permission === "granted") {
+        try {
+          const n = new Notification(title, { body: body, tag: 'focus-timer-' + Date.now(), requireInteraction: true });
+          n.onclick = function() { window.focus(); n.close(); };
+        } catch(e) {}
+      }
+    }
+
+    // 通知 SW 开始/暂停/停止计时
+    function swTimerStart(mode) {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'TIMER_START',
+          timeLeft: timeLeft,
+          mode: mode,
+          subject: currentStudySubject,
+          charName: getLS('char_name') || '陪伴精灵'
+        });
+      }
+    }
+    function swTimerPause() {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'TIMER_PAUSE' });
+      }
+    }
+    function swTimerStop() {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'TIMER_STOP' });
+      }
+    }
+
+    // ==========================================
+    // 1. 本地存储 (动图 & 全局壁纸)
+    // ==========================================
+    const avatarImg = document.getElementById('avatar-img');
+    const appBg = document.getElementById('app-bg');
+    const stateImages = { base: '', idle: '', study: '', poke: '', msg: '' };
+    let baseState = 'idle'; let tempState = null; let tempStateTimer = null;
+    let currentStudySubject = '自由专注'; 
+    let currentFocusTotalDuration = 25; 
+
+    async function initImages() {
+      try {
+        if(typeof localforage !== 'undefined') {
+          stateImages.base = await localforage.getItem('char_img_base64') || '';
+          stateImages.idle = await localforage.getItem('gif_idle_base64') || '';
+          stateImages.study = await localforage.getItem('gif_study_base64') || '';
+          stateImages.poke = await localforage.getItem('gif_poke_base64') || '';
+          stateImages.msg = await localforage.getItem('gif_msg_base64') || '';
+          const savedBg = await localforage.getItem('app_bg_base64');
+          if(savedBg) appBg.style.backgroundImage = `url(${savedBg})`;
+        }
+      } catch(e) { console.error("本地缓存库启动失败", e); }
+      updateAvatarDisplay();
+    }
+    initImages(); 
+
+    function updateAvatarDisplay() {
+      const activeState = tempState || baseState;
+      const targetSrc = stateImages[activeState] || stateImages.idle || stateImages.base;
+      if (targetSrc) avatarImg.src = targetSrc;
+    }
+
+    function setTempState(stateName, durationMs) {
+      // 【修复3】不再要求必须有对应的差分图才能切换状态
+      tempState = stateName; updateAvatarDisplay();
+      if (tempStateTimer) clearTimeout(tempStateTimer);
+      tempStateTimer = setTimeout(() => { tempState = null; updateAvatarDisplay(); }, durationMs);
+    }
+
+    ['idle', 'study', 'poke', 'msg'].forEach(stateKey => {
+      document.getElementById('gif-' + stateKey).addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader(); reader.readAsDataURL(file); 
+          reader.onload = async (event) => {
+            const b64 = event.target.result; stateImages[stateKey] = b64;
+            try { if(typeof localforage !== 'undefined') await localforage.setItem('gif_' + stateKey + '_base64', b64); } catch(e){}
+            updateAvatarDisplay();
+          };
+        }
+      });
+    });
+
+    document.getElementById('bg-file-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+         const reader = new FileReader(); reader.readAsDataURL(file);
+         reader.onload = async (event) => {
+            const b64 = event.target.result; appBg.style.backgroundImage = `url(${b64})`;
+            try { if(typeof localforage !== 'undefined') await localforage.setItem('app_bg_base64', b64); } catch(e){}
+         }
+      }
+    });
+
+    document.getElementById('clear-bg-btn').addEventListener('click', async () => {
+       appBg.style.backgroundImage = 'none'; document.getElementById('bg-file-input').value = '';
+       try { if(typeof localforage !== 'undefined') await localforage.removeItem('app_bg_base64'); } catch(e){}
+    });
+
+    // ==========================================
+    // 2. 待办计划 (带拖拽排序，完美兼容触摸屏)
+    // ==========================================
+    const taskContainer = document.getElementById('task-list-render');
+    let sortableInst = null;
+    
+    let userTasks = null;
+    try { userTasks = JSON.parse(getLS('study_tasks') || 'null'); } catch(e){}
+    if (!userTasks || !Array.isArray(userTasks)) {
+      userTasks = [ { id: 1, name: '专业课复习', time: 45 }, { id: 2, name: '法理学背诵', time: 40 }, { id: 3, name: '英语阅读', time: 30 } ];
+      setLS('study_tasks', JSON.stringify(userTasks));
+    }
+
+    function renderTasks() {
+      taskContainer.innerHTML = '';
+      userTasks.forEach((task, index) => {
+        const div = document.createElement('div'); div.className = 'task-card'; div.dataset.id = task.id;
+        div.innerHTML = `<div class="task-info"><span class="task-title">${task.name}</span><span class="task-time">⏱️ ${task.time} 分钟</span></div>
+                         <div style="display: flex; gap: 5px; align-items: center;"><button class="start-task-btn" onclick="startSpecificTask('${task.name}', ${task.time})">开始</button><button style="background: none; border: none; cursor: pointer; color: #999; font-size: 18px; margin-left:4px;" onclick="deleteTask(${task.id})">×</button></div>`;
+        taskContainer.appendChild(div);
+      });
+      
+      try {
+        if(typeof Sortable !== 'undefined') {
+           if(sortableInst) sortableInst.destroy();
+           sortableInst = Sortable.create(taskContainer, {
+              animation: 150, delay: 100, delayOnTouchOnly: true,
+              onEnd: function (evt) {
+                 const item = userTasks.splice(evt.oldIndex, 1)[0];
+                 userTasks.splice(evt.newIndex, 0, item);
+                 setLS('study_tasks', JSON.stringify(userTasks));
+              }
+           });
+        }
+      } catch(e){}
+    }
+
+    function addNewTask() {
+      const nameInput = document.getElementById('new-task-name'); const timeInput = document.getElementById('new-task-time');
+      const name = nameInput.value.trim(); const time = parseInt(timeInput.value);
+      if (name && time > 0) {
+        userTasks.push({ id: Date.now(), name: name, time: time }); setLS('study_tasks', JSON.stringify(userTasks));
+        nameInput.value = ''; renderTasks();
+      }
+    }
+
+    function deleteTask(id) { userTasks = userTasks.filter(t => t.id !== id); setLS('study_tasks', JSON.stringify(userTasks)); renderTasks(); }
+
+    function startSpecificTask(taskName, durationMin) {
+      if (timerMode !== 'idle') { alert("当前还有计时任务未完成哦！"); return; }
+      currentStudySubject = taskName; currentFocusTotalDuration = durationMin;
+      document.getElementById('current-subject-label').textContent = taskName;
+      timeLeft = durationMin * 60; updateTimerDisplay(); 
+      switchView('view-chat', document.querySelector('[title="消息"]')); document.getElementById('start-btn').click();
+    }
+    renderTasks(); 
+
+    // ==========================================
+    // 3. 气泡与 AI 核心引擎
+    // ==========================================
+    const viewChat = document.getElementById('view-chat');
+    let isThinking = false;
+
+    function renderAggregatedBubbles(msgArray) {
+      viewChat.innerHTML = '';
+      if (!Array.isArray(msgArray)) msgArray = [msgArray];
+      msgArray.forEach((msg, index) => {
+        let textToShow = msg;
+        if (typeof msg === 'object' && msg !== null) textToShow = msg.content || msg.text || msg.message || JSON.stringify(msg);
+        textToShow = String(textToShow).trim(); if(!textToShow) return;
+        setTimeout(() => {
+          const div = document.createElement('div'); div.className = 'chat-msg'; div.textContent = textToShow; viewChat.appendChild(div);
+          
+          // 【修复7】如果页面在后台，发送系统通知
+          if (document.hidden) {
+            const charName = getLS('char_name') || '陪伴精灵';
+            sendNotification(charName + ' 说：', textToShow);
+          }
+
+          setTimeout(() => { div.style.opacity = '0'; div.style.transform = 'translateY(-10px)'; setTimeout(() => { div.remove(); if (viewChat.children.length === 0) { viewChat.classList.remove('active'); document.querySelector('[title="消息"]').classList.remove('active-btn'); } }, 500); }, 60000); 
+        }, index * 450); 
+      });
+      setTempState('msg', 4000);
+    }
+
+    // 【修复1】构建完整角色人设：合并 description + 世界书条目
+    function buildFullCharacterContext() {
+      const charPersona = getLS('char_persona') || '温柔的同伴';
+      const charWorldbook = getLS('char_worldbook') || '';
+      const manualWorldbook = getLS('worldbook') || '';
+      
+      let fullContext = charPersona;
+      if (charWorldbook) fullContext += '\n\n【世界书/角色扩展设定】：\n' + charWorldbook;
+      if (manualWorldbook) fullContext += '\n\n【手动补充规则】：\n' + manualWorldbook;
+      return fullContext;
+    }
+
+    async function fetchRealAIResponse(reason) {
+      if (isThinking) return;
+      const baseUrl = getLS('savedApiUrl'); const apiKey = getLS('savedApiKey'); const model = getLS('savedApiModel');
+      const charName = getLS('char_name') || '陪伴精灵'; 
+      const fullPersona = buildFullCharacterContext();  // 【修复1】使用合并后的完整人设
+      const userPersona = getLS('user_persona') || '主控';
+      if (!baseUrl || !apiKey || !model) { viewChat.innerHTML = '<div class="chat-msg">⚠️ 请先配置大模型接口。</div>'; if (!viewChat.classList.contains('active')) switchView('view-chat', document.querySelector('[title="消息"]')); return; }
+
+      isThinking = true; viewChat.innerHTML = '<div class="chat-msg">思考中...</div>'; if (!viewChat.classList.contains('active')) switchView('view-chat', document.querySelector('[title="消息"]'));
+
+      try {
+        const endpoint = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
+        const response = await fetch(endpoint, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({ 
+            model: model, 
+            messages: [ 
+              { role: "system", content: `【系统指令】：完全沉浸扮演角色：[${charName}]。忘掉AI身份，展现细腻的神态描写与极强的情感张力。【扮演核心要求】：\n1. 这是你们休息时间的日常聊天。保持极强情感张力，展现细腻动作神态(放括号内)。\n2. 说话必须符合你的职业身份，体现你的职业，如你是总裁则一般看文件，是音乐人或贝斯手一般在编曲等等。\n3. 主动调用设定卡信息，提及NPC或世界观。\n4. 绝对禁止自我解释。第一人称直接输出。\n角色设定（含世界书）：\n${fullPersona}\n主控设定：\n${userPersona}\n【绝对格式指令】：必须且只能返回一个包含 3 到 4 个短句动作或对话的合法 JSON 字符串数组。示范：["(递温水) 还在看书呢？", "别太累了，注意休息！", "我会一直陪着你的。"]` }, 
+              { role: "user", content: reason } 
+            ], temperature: 0.75 
+          })
+        });
+        
+        const responseData = await response.json(); if (responseData.error) throw new Error(responseData.error.message);
+        let aiGeneratedText = responseData.choices[0].message.content || "";
+        aiGeneratedText = aiGeneratedText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+        let finalMessagesArray = [];
+        try { finalMessagesArray = JSON.parse(aiGeneratedText); if (!Array.isArray(finalMessagesArray)) finalMessagesArray = [aiGeneratedText]; 
+        } catch (parseError) { 
+          const match = aiGeneratedText.match(/\[.*\]/s);
+          if(match) { try { finalMessagesArray = JSON.parse(match[0]); } catch(e) { finalMessagesArray = aiGeneratedText.split('\n').filter(line => line.trim() !== ''); } } 
+          else { finalMessagesArray = aiGeneratedText.split('\n').filter(line => line.trim() !== ''); }
+        }
+        renderAggregatedBubbles(finalMessagesArray);
+      } catch (err) { console.error(err); viewChat.innerHTML = `<div class="chat-msg">❌ 思考遇到了波动：${err.message}</div>`; } finally { isThinking = false; }
+    }
+
+    // ==========================================
+    // 3.5 休息聊天室 (【修复4】prompt 改为短对话风格)
+    // ==========================================
+    let chatMemory = []; const chatContainer = document.getElementById('chat-history-container'); const chatInput = document.getElementById('chat-input'); const sendChatBtn = document.getElementById('send-chat-btn');
+    function appendChatMessage(role, text) { const div = document.createElement('div'); div.className = 'history-msg ' + (role === 'user' ? 'msg-user' : 'msg-ai'); div.textContent = text; chatContainer.appendChild(div); chatContainer.scrollTop = chatContainer.scrollHeight; }
+
+    async function sendChatMessage() {
+      if (timerMode === 'focus') { appendChatMessage('ai', '专注时间不可分心哦！快去学习，休息时我们再聊~'); return; }
+      const text = chatInput.value.trim(); if (!text || isThinking) return;
+
+      appendChatMessage('user', text); chatMemory.push({role: "user", content: text}); chatInput.value = '';
+      const typingId = "typing-" + Date.now(); const typingDiv = document.createElement('div'); typingDiv.className = 'history-msg msg-ai'; typingDiv.id = typingId; typingDiv.textContent = '思考中...'; chatContainer.appendChild(typingDiv); chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      const baseUrl = getLS('savedApiUrl'); const apiKey = getLS('savedApiKey'); const model = getLS('savedApiModel');
+      const charName = getLS('char_name') || '陪伴精灵'; 
+      const fullPersona = buildFullCharacterContext();  // 【修复1】
+      const userPersona = getLS('user_persona') || '主控';
+      if (!baseUrl || !apiKey || !model) { document.getElementById(typingId).textContent = "⚠️ 请先配置大模型接口。"; chatMemory.pop(); return; }
+
+      isThinking = true;
+      try {
+        // 【修复4】system prompt 强调短对话，禁止长篇大论
+        const systemPrompt = `【系统设定】：你完全沉浸扮演角色：[${charName}]。忘掉你是人工智能，拒绝打破第四面墙。\n角色设定（含世界书）：\n${fullPersona}\n主控设定：\n${userPersona}\n【扮演要求】：\n1. 这是日常即时聊天。像真人发消息一样，每次只回复1~3句话，简短自然，绝对禁止长篇大段。\n2. 展现细腻动作(放括号内)，说话符合职业身份。\n3. 可以主动提及NPC或世界观，但保持简短口语化。\n4. 第一人称直接输出，像微信聊天一样自然。\n5. 禁止一次性输出超过80个字。`;
+        let contextMessages = chatMemory.length > 12 ? chatMemory.slice(chatMemory.length - 12) : chatMemory;
+        const messages = [{ role: "system", content: systemPrompt }, ...contextMessages];
+        const endpoint = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
+        
+        const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify({ model: model, messages: messages, temperature: 0.85, max_tokens: 200 }) });
+        const responseData = await response.json(); if (responseData.error) throw new Error(responseData.error.message);
+
+        const aiGeneratedText = responseData.choices[0].message.content || "";
+        chatMemory.push({role: "assistant", content: aiGeneratedText}); document.getElementById(typingId).remove(); appendChatMessage('assistant', aiGeneratedText); setTempState('msg', 4000);
+
+        // 【修复7】后台时推送聊天消息通知
+        if (document.hidden) {
+          sendNotification(charName + ' 回复了你', aiGeneratedText.substring(0, 80));
+        }
+      } catch (err) { document.getElementById(typingId).textContent = `❌ 发送失败：${err.message}`; chatMemory.pop(); } finally { isThinking = false; }
+    }
+    sendChatBtn.addEventListener('click', sendChatMessage); chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
+
+    // ==========================================
+    // 4. 状态机：专注 -> 休息 自动流转循环
+    // ==========================================
+    let timerMode = 'idle'; // 闲置 'idle', 专注 'focus', 休息 'rest'
+    let isPaused = false;
+    let timeLeft = (parseInt(document.getElementById('focus-time-input').value) || 25) * 60; 
+    let timerId = null; let autoMsgTimer = null;
+    const timeDisplay = document.getElementById('time-display'); const startBtn = document.getElementById('start-btn');
+    const subjectLabel = document.getElementById('current-subject-label');
+
+    function updateTimerDisplay() { const min = Math.floor(timeLeft / 60); const sec = timeLeft % 60; timeDisplay.textContent = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`; }
+    updateTimerDisplay(); 
+
+    function setButtonState(text, isHollow) {
+       startBtn.textContent = text;
+       if(isHollow) {
+          startBtn.style.backgroundColor = 'transparent';
+          startBtn.style.border = '2px solid var(--main-color)';
+          startBtn.style.color = 'var(--main-color)';
+       } else {
+          startBtn.style.backgroundColor = 'var(--main-color)';
+          startBtn.style.border = 'none';
+          startBtn.style.color = 'white';
+       }
+    }
+
+    // ==========================================
+    // 【修复5】后端保活引擎：使用多重策略保证后台计时
+    // ==========================================
+    let bgKeepAliveWorker = null;
+    let lastTickTime = Date.now();
+    let bgTimerCompensation = false;
+
+    // 策略1: Web Worker 后台线程计时（不受页面可见性影响）
+    function createBackgroundWorker() {
+      try {
+        const workerCode = `
+          let interval = null;
+          self.onmessage = function(e) {
+            if (e.data === 'start') {
+              if (interval) clearInterval(interval);
+              interval = setInterval(() => { self.postMessage('tick'); }, 1000);
+            } else if (e.data === 'stop') {
+              if (interval) clearInterval(interval);
+              interval = null;
+            }
+          };
+        `;
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        bgKeepAliveWorker = new Worker(URL.createObjectURL(blob));
+        bgKeepAliveWorker.onmessage = function(e) {
+          if (e.data === 'tick' && (timerMode === 'focus' || timerMode === 'rest') && !isPaused) {
+            // Worker 驱动的 tick，只在主线程 setInterval 被浏览器节流时补偿
+            if (bgTimerCompensation) {
+              processTick();
+            }
+          }
+        };
+        console.log("✅ Web Worker 后台保活引擎已就绪");
+      } catch(e) {
+        console.warn("Web Worker 创建失败，降级为 visibilitychange 补偿", e);
+      }
+    }
+    createBackgroundWorker();
+
+    // 策略2: visibilitychange 时间补偿（页面从后台回到前台时，补算丢失的秒数）
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // 进入后台：记录时间戳，启用 Worker 补偿
+        lastTickTime = Date.now();
+        bgTimerCompensation = true;
+        if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('start');
+      } else {
+        // 回到前台：计算丢失的时间并补偿
+        bgTimerCompensation = false;
+        if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('stop');
+        
+        if ((timerMode === 'focus' || timerMode === 'rest') && !isPaused) {
+          const now = Date.now();
+          const elapsed = Math.floor((now - lastTickTime) / 1000);
+          if (elapsed > 1) {
+            // 补偿丢失的秒数（减去1秒容差）
+            const compensate = elapsed - 1;
+            timeLeft = Math.max(0, timeLeft - compensate);
+            updateTimerDisplay();
+            
+            // 如果补偿后时间已到 0，触发结束逻辑
+            if (timeLeft <= 0) {
+              clearInterval(timerId); clearInterval(autoMsgTimer);
+              handleTimerEnd();
+            }
+          }
+        }
+        lastTickTime = Date.now();
+      }
+    });
+
+    // 策略3: 心跳锁（通过周期性的微任务防止浏览器完全休眠页面）
+    let wakeLockSentinel = null;
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
+          wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; });
+        }
+      } catch(e) { /* 用户拒绝或不支持 */ }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release(); wakeLockSentinel = null;
+      }
+    }
+
+    // 主计时 tick 处理函数
+    function processTick() {
+      timeLeft--; updateTimerDisplay();
+      lastTickTime = Date.now();
+      if (timeLeft <= 0) {
+        clearInterval(timerId); clearInterval(autoMsgTimer);
+        if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('stop');
+        handleTimerEnd();
+      }
+    }
+
+    // 计时结束统一处理
+    function handleTimerEnd() {
+      if (timerMode === 'focus') {
+        // 【专注结束，存入账本，转入休息】
+        const todayStr = echarts.time.format(new Date(), '{yyyy}-{MM}-{dd}', false);
+        let allStats = {}; try { allStats = JSON.parse(getLS('real_study_stats') || '{}'); } catch(e){}
+        if (!allStats[todayStr]) allStats[todayStr] = { total: 0, subjects: {} };
+        allStats[todayStr].total += currentFocusTotalDuration;
+        allStats[todayStr].subjects[currentStudySubject] = (allStats[todayStr].subjects[currentStudySubject] || 0) + currentFocusTotalDuration;
+        setLS('real_study_stats', JSON.stringify(allStats));
+        if (document.getElementById('view-stats').classList.contains('active')) renderAllCharts();
+        
+        timerMode = 'rest'; isPaused = false;
+        const restTime = parseInt(document.getElementById('rest-time-input').value) || 5;
+        timeLeft = restTime * 60; updateTimerDisplay();
+        
+        setButtonState('⏹ 跳过休息', false);
+        subjectLabel.textContent = '☕ 休息中';
+        baseState = 'idle'; updateAvatarDisplay(); 
+        chatInput.disabled = false; sendChatBtn.disabled = false; chatInput.placeholder = "在休息时间陪我聊聊吧... (按 Enter 发送)";
+        
+        // 【修复6】计时结束时发送通知
+        sendNotification('🎉 专注达成！', `${currentStudySubject} ${currentFocusTotalDuration}分钟专注完成，开始休息吧！`);
+        fetchRealAIResponse("当前这节专注学习时间到，快夸奖主控并催促其去休息。生成3到4个短句。");
+        startIntervals();
+        swTimerStart('rest'); // 同步 SW 休息计时
+        
+      } else if (timerMode === 'rest') {
+        // 【修复6】休息结束通知
+        sendNotification('⏰ 休息结束！', '准备好开始下一阶段的专注了吗？');
+        skipRest();
+        fetchRealAIResponse("休息时间结束了，提醒主控准备开始下一阶段的专注吧。生成3到4个短句。");
+      }
+    }
+
+    startBtn.addEventListener('click', () => {
+      if (timerMode === 'idle') {
+        timerMode = 'focus'; isPaused = false;
+        if(currentStudySubject === '自由专注') currentFocusTotalDuration = parseInt(document.getElementById('focus-time-input').value) || 25;
+        setButtonState('⏸ 暂停专注', true); baseState = 'study'; updateAvatarDisplay();
+        chatInput.disabled = true; sendChatBtn.disabled = true; chatInput.placeholder = "专注时间到啦，好好学习，等下再聊！";
+        requestWakeLock(); // 请求屏幕保持
+        startIntervals();
+        swTimerStart('focus'); // 同步 SW 后台计时
+      } 
+      else if (timerMode === 'focus') {
+        if (!isPaused) {
+          isPaused = true; clearInterval(timerId); clearInterval(autoMsgTimer);
+          if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('stop');
+          swTimerPause(); // 同步 SW 暂停
+          setButtonState('▶ 继续专注', false); baseState = 'idle'; updateAvatarDisplay();
+          chatInput.disabled = false; sendChatBtn.disabled = false; chatInput.placeholder = "在休息时间陪我聊聊吧... (按 Enter 发送)";
+          releaseWakeLock();
+        } else {
+          isPaused = false; setButtonState('⏸ 暂停专注', true); baseState = 'study'; updateAvatarDisplay();
+          chatInput.disabled = true; sendChatBtn.disabled = true; chatInput.placeholder = "专注时间到啦，好好学习，等下再聊！";
+          requestWakeLock();
+          startIntervals();
+          swTimerStart('focus'); // 同步 SW 恢复
+        }
+      } 
+      else if (timerMode === 'rest') {
+        skipRest();
+      }
+    });
+
+    function startIntervals() {
+      lastTickTime = Date.now();
+      timerId = setInterval(() => {
+        processTick();
+      }, 1000);
+      
+      if (timerMode === 'focus') {
+        autoMsgTimer = setInterval(() => { fetchRealAIResponse(`主控已经非常认真地进行【${currentStudySubject}】学习10分钟了，请说点话打破沉默鼓励一下。生成3到4个短句。`); }, 10 * 60 * 1000);
+      }
+    }
+
+    function skipRest() {
+       clearInterval(timerId); clearInterval(autoMsgTimer);
+       if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('stop');
+       swTimerStop(); // 同步 SW 停止
+       releaseWakeLock();
+       timerMode = 'idle'; isPaused = false;
+       setButtonState('▶ 开始专注', false);
+       currentStudySubject = '自由专注'; subjectLabel.textContent = '自由专注';
+       const resetTime = parseInt(document.getElementById('focus-time-input').value) || 25; 
+       timeLeft = resetTime * 60; updateTimerDisplay();
+       baseState = 'idle'; updateAvatarDisplay();
+    }
+
+    // ==========================================
+    // 5. Echarts 图表渲染 & 移动端旋转自适应
+    // ==========================================
+    let pieChart = null, barChart = null, heatmapChart = null;
+    function switchView(viewId, btnElement) {
+      document.querySelectorAll('.side-view').forEach(el => el.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+      document.querySelectorAll('.icon-btn').forEach(btn => btn.classList.remove('active-btn'));
+      btnElement.classList.add('active-btn');
+      if (viewId === 'view-stats') setTimeout(renderAllCharts, 50);
+    }
+
+    function renderAllCharts() {
+      try {
+        if(typeof echarts === 'undefined') return;
+        const mainPurple = getComputedStyle(document.documentElement).getPropertyValue('--main-color').trim();
+        let allStats = {}; try { allStats = JSON.parse(getLS('real_study_stats') || '{}'); } catch(e){}
+        const todayStr = echarts.time.format(new Date(), '{yyyy}-{MM}-{dd}', false); const todayData = allStats[todayStr] || { total: 0, subjects: {} };
+
+        let pieData = Object.keys(todayData.subjects).map(sub => ({ name: sub, value: todayData.subjects[sub] }));
+        if (pieData.length === 0) pieData = [{ name: '今日暂无专注', value: 0 }];
+
+        let barX = []; let barY = [];
+        for (let i = 6; i >= 0; i--) {
+          let d = new Date(); d.setDate(d.getDate() - i); let dStr = echarts.time.format(d, '{yyyy}-{MM}-{dd}', false);
+          barX.push(echarts.time.format(d, '{MM}-{dd}', false)); barY.push(allStats[dStr] ? (allStats[dStr].total / 60).toFixed(1) : 0); 
+        }
+
+        let heatData = []; for (let date in allStats) { heatData.push([date, (allStats[date].total / 60).toFixed(1)]); }
+        const currentYearMonth = echarts.time.format(new Date(), '{yyyy}-{MM}', false);
+
+        if (!pieChart) pieChart = echarts.init(document.getElementById('pie-chart-container'));
+        pieChart.setOption({ tooltip: { trigger: 'item', formatter: '{b}: <br/>{c} 分钟 ({d}%)' }, series: [{ type: 'pie', radius: ['40%', '70%'], itemStyle: { borderRadius: 6 }, label: { show: true, fontSize: 11 }, data: pieData }] });
+        
+        if (!barChart) barChart = echarts.init(document.getElementById('bar-chart-container'));
+        barChart.setOption({ tooltip: { trigger: 'axis', formatter: '{b}<br/>总专注: {c} 小时' }, grid: { top: '15%', bottom: '15%', left: '10%', right: '5%' }, xAxis: { type: 'category', data: barX }, yAxis: { type: 'value', name: '小时' }, series: [{ data: barY, type: 'bar', itemStyle: { color: mainPurple, borderRadius: [4, 4, 0, 0] } }] });
+        
+        if (!heatmapChart) heatmapChart = echarts.init(document.getElementById('heatmap-chart-container'));
+        heatmapChart.setOption({ 
+          tooltip: { formatter: function (p) { return p.value[0] + '<br/>共专注 ' + p.value[1] + ' 小时'; } },
+          visualMap: { show: false, min: 0, max: 8, inRange: { color: ['#f5f5f5', mainPurple] } }, 
+          calendar: { top: 25, bottom: 5, left: 30, right: 10, range: currentYearMonth, cellSize: [45, 30], splitLine: { show: false }, itemStyle: { borderWidth: 2, borderColor: '#fff', borderRadius: 6 }, yearLabel: { show: false }, dayLabel: { nameMap: ['日', '一', '二', '三', '四', '五', '六'], fontSize: 10 } }, 
+          series: { type: 'heatmap', coordinateSystem: 'calendar', data: heatData, label: { show: true, formatter: function(params) { return params.value[1] > 0 ? params.value[1] + 'h' : ''; }, color: '#222', fontSize: 10, fontWeight: 'bold' } } 
+        });
+
+        pieChart.resize(); barChart.resize(); heatmapChart.resize();
+      } catch(e) {}
+    }
+    
+    // 【完美重绘】横竖屏翻转时图表 + 布局自适应
+    window.addEventListener('resize', () => { if(pieChart) pieChart.resize(); if(barChart) barChart.resize(); if(heatmapChart) heatmapChart.resize(); });
+
+    // ==========================================
+    // 6. 配置中心：防卡死的下拉框与安全存储
+    // ==========================================
+    const urlInput = document.getElementById('api-url'); const keyInput = document.getElementById('api-key'); const userPersonaInput = document.getElementById('user-persona'); const worldbookInput = document.getElementById('worldbook'); const charFileInput = document.getElementById('char-file-input'); const charStatus = document.getElementById('char-status'); 
+    const focusTimeInput = document.getElementById('focus-time-input'); const restTimeInput = document.getElementById('rest-time-input'); 
+    const modelInput = document.getElementById('api-model'); const customModelList = document.getElementById('custom-model-list'); 
+    let allModels = []; 
+
+    urlInput.value = getLS('savedApiUrl') || ''; keyInput.value = getLS('savedApiKey') || ''; userPersonaInput.value = getLS('user_persona') || ''; worldbookInput.value = getLS('worldbook') || ''; focusTimeInput.value = getLS('focus_time') || 25; restTimeInput.value = getLS('rest_time') || 5;
+    if (getLS('char_name')) charStatus.textContent = `当前角色: ${getLS('char_name')}`; if (getLS('savedApiModel')) modelInput.value = getLS('savedApiModel');
+
+    document.getElementById('save-settings-btn').addEventListener('click', () => {
+      setLS('savedApiUrl', urlInput.value.trim()); setLS('savedApiKey', keyInput.value.trim()); setLS('savedApiModel', modelInput.value.trim()); setLS('user_persona', userPersonaInput.value); setLS('worldbook', worldbookInput.value); 
+      setLS('focus_time', parseInt(focusTimeInput.value) || 25); setLS('rest_time', parseInt(restTimeInput.value) || 5);
+      if (timerMode === 'idle') { timeLeft = (parseInt(focusTimeInput.value) || 25) * 60; updateTimerDisplay(); }
+      alert("配置保存成功！");
+    });
+
+    function renderCustomOptions(models) {
+      customModelList.innerHTML = '';
+      models.forEach(modelId => { const div = document.createElement('div'); div.className = 'custom-option'; div.textContent = modelId; div.addEventListener('click', () => { modelInput.value = modelId; customModelList.classList.remove('show'); }); customModelList.appendChild(div); });
+    }
+
+    const fetchModelsBtn = document.getElementById('fetch-models-btn');
+    fetchModelsBtn.addEventListener('click', async (e) => {
+      e.preventDefault(); e.stopPropagation(); 
+      fetchModelsBtn.textContent = '...';
+      const baseUrl = urlInput.value.trim(); const apiKey = keyInput.value.trim(); const endpoint = baseUrl.endsWith('/') ? baseUrl + 'models' : baseUrl + '/models';
+      try { 
+        const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${apiKey}` } }); 
+        if(!res.ok) throw new Error("接口返回错误: " + res.status);
+        const json = await res.json(); allModels = json.data.map(m => m.id); renderCustomOptions(allModels); customModelList.classList.add('show'); 
+        alert("模型获取成功！请在输入框下方滑动选择！"); 
+      } catch(err) { alert("获取失败: " + err.message); }
+      fetchModelsBtn.textContent = '获取';
+    });
+
+    modelInput.addEventListener('focus', () => { if (allModels.length > 0) { renderCustomOptions(allModels); customModelList.classList.add('show'); } });
+    modelInput.addEventListener('input', () => { const keyword = modelInput.value.toLowerCase(); const filtered = allModels.filter(m => m.toLowerCase().includes(keyword)); renderCustomOptions(filtered); if (filtered.length > 0) customModelList.classList.add('show'); else customModelList.classList.remove('show'); });
+    document.addEventListener('click', (e) => { if (!modelInput.contains(e.target) && !customModelList.contains(e.target) && e.target.id !== 'fetch-models-btn') { customModelList.classList.remove('show'); } });
+
+    // ==========================================
+    // 【修复1】增强版角色卡解析：深度提取世界书条目
+    // ==========================================
+    function parseSillyTavernCard(arrayBuffer) {
+       const view = new DataView(arrayBuffer); let offset = 8; 
+       while (offset < view.byteLength) { if (offset + 8 > view.byteLength) break; const length = view.getUint32(offset); const type = String.fromCharCode(view.getUint8(offset + 4), view.getUint8(offset + 5), view.getUint8(offset + 6), view.getUint8(offset + 7)); if (type === 'tEXt' || type === 'iTXt') { let keyword = ''; let charOffset = offset + 8; while (view.getUint8(charOffset) !== 0 && charOffset < view.byteLength) { keyword += String.fromCharCode(view.getUint8(charOffset)); charOffset++; } if (keyword === 'chara') { charOffset++; let text = new TextDecoder().decode(new Uint8Array(arrayBuffer, charOffset, length - (charOffset - (offset + 8)))); try { return JSON.parse(atob(text)); } catch(e) { return JSON.parse(text); } } } offset += 12 + length; } throw new Error("元数据解析失败");
+    }
+
+    // 从角色卡数据中提取世界书条目
+    function extractWorldbookEntries(charData) {
+      const character = charData.data || charData;
+      let entries = [];
+      
+      // SillyTavern V2 格式：character_book 内嵌世界书
+      const book = character.character_book;
+      if (book && book.entries) {
+        // entries 可能是数组或对象
+        const entryList = Array.isArray(book.entries) ? book.entries : Object.values(book.entries);
+        entryList.forEach(entry => {
+          if (entry.enabled === false) return; // 跳过禁用条目
+          const content = entry.content || '';
+          const keys = entry.keys || entry.key || [];
+          const keyStr = Array.isArray(keys) ? keys.join(', ') : String(keys);
+          const name = entry.comment || entry.name || keyStr || '未命名条目';
+          if (content.trim()) {
+            entries.push(`【${name}】: ${content.trim()}`);
+          }
+        });
+      }
+      
+      // 也检查 extensions 中的世界书
+      if (character.extensions && character.extensions.world) {
+        entries.push(`【世界观名称】: ${character.extensions.world}`);
+      }
+
+      // 检查 V1 格式中可能的其他位置
+      if (charData.character_book && charData.character_book.entries) {
+        const entryList = Array.isArray(charData.character_book.entries) ? charData.character_book.entries : Object.values(charData.character_book.entries);
+        entryList.forEach(entry => {
+          if (entry.enabled === false) return;
+          const content = entry.content || '';
+          const keys = entry.keys || entry.key || [];
+          const keyStr = Array.isArray(keys) ? keys.join(', ') : String(keys);
+          const name = entry.comment || entry.name || keyStr || '未命名条目';
+          if (content.trim()) {
+            entries.push(`【${name}】: ${content.trim()}`);
+          }
+        });
+      }
+
+      return entries.join('\n\n');
+    }
+
+    charFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0]; if (!file) return; 
+      
+      if (file.name.endsWith('.json')) {
+        // JSON 格式角色卡
+        const reader = new FileReader(); reader.readAsText(file);
+        reader.onload = (event) => {
+          try {
+            const charData = JSON.parse(event.target.result);
+            const character = charData.data || charData;
+            setLS('char_name', character.name || '未知角色');
+            // 合并 description + personality + scenario + mes_example 等
+            let fullDesc = character.description || '';
+            if (character.personality) fullDesc += '\n性格：' + character.personality;
+            if (character.scenario) fullDesc += '\n场景：' + character.scenario;
+            if (character.first_mes) fullDesc += '\n首条消息示例：' + character.first_mes;
+            setLS('char_persona', fullDesc);
+            
+            // 【修复1】提取并保存世界书
+            const worldbookContent = extractWorldbookEntries(charData);
+            setLS('char_worldbook', worldbookContent);
+            if (worldbookContent) {
+              worldbookInput.value = (getLS('worldbook') || '') + (getLS('worldbook') ? '\n' : '') + '（已从角色卡自动导入世界书）';
+            }
+            
+            charStatus.textContent = `当前角色: ${character.name}` + (worldbookContent ? ' ✅世界书已读取' : '');
+            alert("角色卡导入成功！" + (worldbookContent ? "\n🌍 世界书条目已自动提取！" : ""));
+          } catch(err) { alert("JSON解析失败: " + err.message); }
+        };
+      }
+      else if (file.name.endsWith('.png')) { 
+        const reader = new FileReader(); reader.readAsArrayBuffer(file); 
+        reader.onload = (event) => { 
+          try { 
+            const charData = parseSillyTavernCard(event.target.result); 
+            const character = charData.data || charData; 
+            setLS('char_name', character.name || '未知角色'); 
+            // 合并 description + personality + scenario
+            let fullDesc = character.description || '';
+            if (character.personality) fullDesc += '\n性格：' + character.personality;
+            if (character.scenario) fullDesc += '\n场景：' + character.scenario;
+            if (character.first_mes) fullDesc += '\n首条消息示例：' + character.first_mes;
+            setLS('char_persona', fullDesc);
+            
+            // 【修复1】提取并保存世界书
+            const worldbookContent = extractWorldbookEntries(charData);
+            setLS('char_worldbook', worldbookContent);
+            
+            charStatus.textContent = `当前角色: ${character.name}` + (worldbookContent ? ' ✅世界书已读取' : '');
+            
+            const imgReader = new FileReader(); imgReader.readAsDataURL(file); 
+            imgReader.onload = async (imgEvent) => { 
+              const b64 = imgEvent.target.result; stateImages.base = b64; 
+              try{ if(typeof localforage !== 'undefined') await localforage.setItem('char_img_base64', b64); }catch(e){} 
+              updateAvatarDisplay(); 
+              alert("角色卡及头像导入成功！" + (worldbookContent ? "\n🌍 世界书条目已自动提取！" : "")); 
+            }; 
+          } catch(err) { alert("解析失败: " + err.message); } 
+        }; 
+      }
+    });
+
+    document.getElementById('avatar-btn').addEventListener('click', () => { setTempState('poke', 2500); fetchRealAIResponse("主控刚刚轻轻地戳了你一下进行互动。"); });
+
+    const customColorBtn = document.getElementById('custom-color-btn'); const colorPicker = document.getElementById('color-picker');
+    customColorBtn.addEventListener('click', () => colorPicker.click());
+    colorPicker.addEventListener('input', (e) => {
+      const newColor = e.target.value; const r = parseInt(newColor.slice(1, 3), 16); const g = parseInt(newColor.slice(3, 5), 16); const b = parseInt(newColor.slice(5, 7), 16);
+      document.documentElement.style.setProperty('--main-color-rgb', `${r}, ${g}, ${b}`);
+      if(timerMode === 'focus' && !isPaused) setButtonState('⏸ 暂停专注', true);
+      if (document.getElementById('view-stats').classList.contains('active')) renderAllCharts();
+    });
+  </script>
+</body>
+</html>
