@@ -1,7 +1,7 @@
 // ==========================================
 // Service Worker: 后台保活 + 离线缓存 + 通知推送
 // ==========================================
-const CACHE_NAME = 'focus-timer-v3';
+const CACHE_NAME = 'focus-timer-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
