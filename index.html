@@ -284,7 +284,7 @@
     </div>
   </div>
 
-  <input type="color" id="color-picker" style="visibility: hidden; position: absolute; width: 0; height: 0;" value="#B399FF">
+  <input type="color" id="color-picker" style="position: fixed; top: -100px; left: -100px; opacity: 0; width: 50px; height: 50px; pointer-events: none;" value="#B399FF">
 
   <script>
     // ==========================================
@@ -311,14 +311,15 @@
         })
         .catch(err => console.warn('SW 注册失败:', err));
 
-      // 监听 SW 发来的消息（后台计时 tick / 计时结束）
+      // 监听 SW 发来的消息（后台计时结束通知）
       navigator.serviceWorker.addEventListener('message', (event) => {
         const data = event.data;
         if (data.type === 'TIMER_TICK') {
-          timeLeft = data.timeLeft;
-          updateTimerDisplay();
+          // SW tick 仅作为后台心跳，前端用自己的 timerAnchor 计算
+          // 不覆盖 timeLeft，避免多源冲突导致加速
         } else if (data.type === 'TIMER_END') {
           // SW 已发通知，前端执行状态切换
+          timeLeft = 0; updateTimerDisplay();
           handleTimerEnd();
         } else if (data.type === 'TIMER_STATE') {
           // 同步后台计时器状态（页面刷新恢复）
@@ -382,6 +383,14 @@
     let currentFocusTotalDuration = 25; 
 
     async function initImages() {
+      // 请求持久化存储（防止浏览器自动清理 IndexedDB）
+      try {
+        if (navigator.storage && navigator.storage.persist) {
+          const granted = await navigator.storage.persist();
+          if (granted) console.log('✅ 持久化存储已授权');
+        }
+      } catch(e) {}
+
       try {
         if(typeof localforage !== 'undefined') {
           stateImages.base = await localforage.getItem('char_img_base64') || '';
@@ -391,8 +400,30 @@
           stateImages.msg = await localforage.getItem('gif_msg_base64') || '';
           const savedBg = await localforage.getItem('app_bg_base64');
           if(savedBg) appBg.style.backgroundImage = `url(${savedBg})`;
+          
+          // 同步恢复角色名和人设状态
+          const savedCharName = getLS('char_name');
+          if (savedCharName) {
+            const cs = document.getElementById('char-status');
+            if (cs) cs.textContent = `当前角色: ${savedCharName}`;
+          }
         }
-      } catch(e) { console.error("本地缓存库启动失败", e); }
+      } catch(e) { 
+        console.error("本地缓存读取失败，2秒后重试", e);
+        // 重试一次（CDN 延迟加载时可能首次失败）
+        setTimeout(async () => {
+          try {
+            if(typeof localforage !== 'undefined') {
+              stateImages.base = await localforage.getItem('char_img_base64') || '';
+              stateImages.idle = await localforage.getItem('gif_idle_base64') || '';
+              stateImages.study = await localforage.getItem('gif_study_base64') || '';
+              stateImages.poke = await localforage.getItem('gif_poke_base64') || '';
+              stateImages.msg = await localforage.getItem('gif_msg_base64') || '';
+              updateAvatarDisplay();
+            }
+          } catch(e2) {}
+        }, 2000);
+      }
       updateAvatarDisplay();
     }
     initImages(); 
@@ -554,7 +585,7 @@
           body: JSON.stringify({ 
             model: model, 
             messages: [ 
-              { role: "system", content: `【系统指令】：完全沉浸扮演角色：[${charName}]。忘掉AI身份，展现细腻的神态描写与极强的情感张力。【扮演核心要求】：\n1. 这是你们休息时间的日常聊天。保持极强情感张力，展现细腻动作神态(放括号内)。\n2. 说话必须符合你的职业身份，体现你的职业，如你是总裁则一般看文件，是音乐人或贝斯手一般在编曲等等。\n3. 主动调用设定卡信息，提及NPC或世界观。\n4. 绝对禁止自我解释。第一人称直接输出。\n5. 【绝对禁止】禁止生成任何状态栏、属性面板、数值面板、HP/MP/好感度等数据框。只输出纯对话和动作描写。\n角色设定（含世界书）：\n${fullPersona}\n主控设定：\n${userPersona}\n【绝对格式指令】：必须且只能返回一个包含 2 到 3 段完整对话的合法 JSON 字符串数组。每段应包含一个连贯的动作描写和一段有内容的对话（不少于15个字），不要把动作和对话拆成碎片。示范：["(从文件堆里抬起头，揉了揉发酸的眼角，视线落在她身上) 你站在那里多久了？下次直接叫我就好，我这人一看文件就容易忘了时间。", "(起身走到她身边，自然地伸手理了理她额前的碎发) 今天学得怎么样？要是累了就别硬撑，我陪你出去走走透透气。"]` }, 
+              { role: "system", content: `【系统指令】：完全沉浸扮演角色：[${charName}]。忘掉AI身份，展现细腻的神态描写与极强的情感张力。【扮演核心要求】：\n1. 这是你们休息时间的日常聊天。保持极强情感张力，展现细腻动作神态(放括号内)。\n2. 说话必须符合你的职业身份，体现你的职业，如你是总裁则一般看文件，是音乐人或贝斯手一般在编曲等等。\n3. 主动调用设定卡信息，提及NPC或世界观。\n4. 绝对禁止自我解释。第一人称直接输出。\n5. 【绝对禁止】禁止生成任何状态栏、属性面板、数值面板、HP/MP/好感度等数据框。只输出纯对话和动作描写。\n角色设定（含世界书）：\n${fullPersona}\n主控设定：\n${userPersona}\n【绝对格式指令】：必须且只能返回一个包含 3 到 4 个短句动作或对话的合法 JSON 字符串数组。示范：["(递温水) 还在看书呢？", "别太累了，注意休息！", "我会一直陪着你的。"]` }, 
               { role: "user", content: reason } 
             ], temperature: 0.75 
           })
@@ -608,12 +639,12 @@
       isThinking = true;
       try {
         // 【修复4】system prompt 强调短对话，禁止长篇大论
-        const systemPrompt = `【系统设定】：你完全沉浸扮演角色：[${charName}]。忘掉你是人工智能，拒绝打破第四面墙。\n角色设定（含世界书）：\n${fullPersona}\n主控设定：\n${userPersona}\n【扮演要求】：\n1. 这是日常即时聊天。像真人发消息一样，每次只回复1~3句话，简短自然，绝对禁止长篇大段。\n2. 展现细腻动作(放括号内)，说话符合职业身份。\n3. 可以主动提及NPC或世界观，但保持简短口语化。\n4. 第一人称直接输出，像微信聊天一样自然。\n5. 禁止一次性输出超过80个字。\n6. 【绝对禁止】禁止生成任何形式的状态栏、属性面板、数值面板、HP/MP/好感度/体力值等数据框或表格。只输出纯对话和动作描写，不要附带任何数值信息。`;
+        const systemPrompt = `【系统设定】：你完全沉浸扮演角色：[${charName}]。忘掉你是人工智能，拒绝打破第四面墙。\n角色设定（含世界书）：\n${fullPersona}\n主控设定：\n${userPersona}\n【核心扮演规则 - 违反即失败】：\n1. 这是手机即时聊天。你在模拟真人发微信/QQ消息。真人不会一次发一大段话。\n2. 每次回复只说1~2句话，就像真的在打字发消息一样。总字数控制在50字以内。\n3. 动作描写放括号内，简洁不超过10个字，如(笑了笑)、(放下手机)。\n4. 语气自然口语化，可以用语气词（嗯、啊、哈哈、唔）。\n5. 禁止输出任何状态栏、属性面板、数值信息。\n6. 禁止一次性说三句话以上。少说一点，留给对方回复的空间。`;
         let contextMessages = chatMemory.length > 12 ? chatMemory.slice(chatMemory.length - 12) : chatMemory;
         const messages = [{ role: "system", content: systemPrompt }, ...contextMessages];
         const endpoint = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
         
-        const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify({ model: model, messages: messages, temperature: 0.85, max_tokens: 200 }) });
+        const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify({ model: model, messages: messages, temperature: 0.85 }) });
         const responseData = await response.json(); if (responseData.error) throw new Error(responseData.error.message);
 
         const aiGeneratedText = stripStatusBars(responseData.choices[0].message.content || "");
@@ -654,12 +685,19 @@
     }
 
     // ==========================================
-    // 【修复1+2】增强后台保活引擎：多重策略 + 周期性音频心跳
+    // 【修复1+2】增强后台保活引擎：时间戳驱动，杜绝计时加速
     // ==========================================
     let bgKeepAliveWorker = null;
-    let lastTickTime = Date.now();
+    let timerAnchor = null; // 计时器锚点：{ startedAt: Date.now(), totalSeconds: N }
     let bgTimerCompensation = false;
-    let audioKeepAlive = null; // 无声音频心跳（iOS 专用保活）
+    let audioKeepAlive = null;
+
+    // 核心：根据时间戳计算剩余时间（唯一真相来源，不再用多个 -1 叠加）
+    function calcTimeLeft() {
+      if (!timerAnchor) return timeLeft;
+      const elapsed = Math.floor((Date.now() - timerAnchor.startedAt) / 1000);
+      return Math.max(0, timerAnchor.totalSeconds - elapsed);
+    }
 
     // 策略0: 无声音频保活（iOS Safari/WebKit 唯一可靠的后台保活方式）
     function startAudioKeepAlive() {
@@ -668,20 +706,18 @@
           const AudioContext = window.AudioContext || window.webkitAudioContext;
           if (AudioContext) {
             audioKeepAlive = new AudioContext();
-            // 创建一个几乎无声的振荡器（频率1Hz，音量极低）
             const oscillator = audioKeepAlive.createOscillator();
             const gainNode = audioKeepAlive.createGain();
-            gainNode.gain.value = 0.001; // 几乎无声
+            gainNode.gain.value = 0.001;
             oscillator.frequency.value = 1;
             oscillator.connect(gainNode);
             gainNode.connect(audioKeepAlive.destination);
             oscillator.start();
-            console.log('✅ 音频保活引擎已启动');
           }
         } else if (audioKeepAlive.state === 'suspended') {
           audioKeepAlive.resume();
         }
-      } catch(e) { console.warn('音频保活不可用', e); }
+      } catch(e) {}
     }
     
     function stopAudioKeepAlive() {
@@ -690,7 +726,7 @@
       }
     }
 
-    // 策略1: Web Worker 后台线程计时（不受页面可见性影响）
+    // 策略1: Web Worker（仅用于触发 UI 刷新，不参与计算）
     function createBackgroundWorker() {
       try {
         const workerCode = `
@@ -709,54 +745,40 @@
         bgKeepAliveWorker = new Worker(URL.createObjectURL(blob));
         bgKeepAliveWorker.onmessage = function(e) {
           if (e.data === 'tick' && (timerMode === 'focus' || timerMode === 'rest') && !isPaused) {
-            // Worker 驱动的 tick，只在主线程 setInterval 被浏览器节流时补偿
-            if (bgTimerCompensation) {
-              processTick();
+            // Worker 只负责刷新显示，不做 timeLeft-- 运算
+            timeLeft = calcTimeLeft();
+            updateTimerDisplay();
+            if (timeLeft <= 0) {
+              clearInterval(timerId); clearInterval(autoMsgTimer);
+              if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('stop');
+              handleTimerEnd();
             }
           }
         };
-        console.log("✅ Web Worker 后台保活引擎已就绪");
-      } catch(e) {
-        console.warn("Web Worker 创建失败，降级为 visibilitychange 补偿", e);
-      }
+      } catch(e) {}
     }
     createBackgroundWorker();
 
-    // 策略2: visibilitychange 时间补偿（页面从后台回到前台时，补算丢失的秒数）
+    // 策略2: visibilitychange（回前台时根据时间戳刷新，不做额外补偿）
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        // 进入后台：记录时间戳，启用所有保活策略
-        lastTickTime = Date.now();
-        bgTimerCompensation = true;
         if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('start');
-        startAudioKeepAlive(); // iOS 音频保活
-        // 同步 SW 确保后台计时
+        startAudioKeepAlive();
         if ((timerMode === 'focus' || timerMode === 'rest') && !isPaused) {
           swTimerStart(timerMode);
         }
       } else {
-        // 回到前台：计算丢失的时间并补偿
-        bgTimerCompensation = false;
         if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('stop');
         stopAudioKeepAlive();
         
         if ((timerMode === 'focus' || timerMode === 'rest') && !isPaused) {
-          const now = Date.now();
-          const elapsed = Math.floor((now - lastTickTime) / 1000);
-          if (elapsed > 1) {
-            // 补偿丢失的秒数（减去1秒容差）
-            const compensate = elapsed - 1;
-            timeLeft = Math.max(0, timeLeft - compensate);
-            updateTimerDisplay();
-            
-            // 如果补偿后时间已到 0，触发结束逻辑
-            if (timeLeft <= 0) {
-              clearInterval(timerId); clearInterval(autoMsgTimer);
-              handleTimerEnd();
-            }
+          timeLeft = calcTimeLeft();
+          updateTimerDisplay();
+          if (timeLeft <= 0) {
+            clearInterval(timerId); clearInterval(autoMsgTimer);
+            handleTimerEnd();
           }
         }
-        lastTickTime = Date.now();
       }
     });
 
@@ -777,10 +799,10 @@
       }
     }
 
-    // 主计时 tick 处理函数
+    // 主计时 tick 处理函数（只刷新显示，真相来源是 timerAnchor 时间戳）
     function processTick() {
-      timeLeft--; updateTimerDisplay();
-      lastTickTime = Date.now();
+      timeLeft = calcTimeLeft();
+      updateTimerDisplay();
       if (timeLeft <= 0) {
         clearInterval(timerId); clearInterval(autoMsgTimer);
         if (bgKeepAliveWorker) bgKeepAliveWorker.postMessage('stop');
@@ -858,7 +880,8 @@
     });
 
     function startIntervals() {
-      lastTickTime = Date.now();
+      // 设置时间戳锚点（唯一真相来源）
+      timerAnchor = { startedAt: Date.now(), totalSeconds: timeLeft };
       timerId = setInterval(() => {
         processTick();
       }, 1000);
@@ -874,6 +897,7 @@
        swTimerStop(); // 同步 SW 停止
        releaseWakeLock();
        stopAudioKeepAlive();
+       timerAnchor = null; // 清除计时锚点
        timerMode = 'idle'; isPaused = false;
        setButtonState('▶ 开始专注', false);
        currentStudySubject = '自由专注'; subjectLabel.textContent = '自由专注';
@@ -1062,29 +1086,56 @@
       const file = e.target.files[0]; if (!file) return; 
       
       if (file.name.endsWith('.json')) {
-        // JSON 格式角色卡
+        // JSON 格式角色卡（支持 SillyTavern 和自定义格式）
         const reader = new FileReader(); reader.readAsText(file);
         reader.onload = (event) => {
           try {
             const charData = JSON.parse(event.target.result);
             const character = charData.data || charData;
-            setLS('char_name', character.name || '未知角色');
-            // 合并 description + personality + scenario + mes_example 等
-            let fullDesc = character.description || '';
-            if (character.personality) fullDesc += '\n性格：' + character.personality;
-            if (character.scenario) fullDesc += '\n场景：' + character.scenario;
-            if (character.first_mes) fullDesc += '\n首条消息示例：' + character.first_mes;
+            
+            // 【修复4】灵活字段匹配：优先 SillyTavern 标准字段，降级到常见中文字段
+            const name = character.name || character['角色名'] || character['名字'] || character['角色'] || character['char_name'] || character['charName'] || '未知角色';
+            
+            const desc = character.description || character['人设'] || character['描述'] || character['设定'] || character['角色描述'] || character['角色设定'] || character['char_persona'] || character['persona'] || character['system_prompt'] || character['system'] || '';
+            const personality = character.personality || character['性格'] || character['个性'] || '';
+            const scenario = character.scenario || character['场景'] || character['背景'] || character['世界观'] || '';
+            const firstMes = character.first_mes || character['首条消息'] || character['开场白'] || character['greeting'] || '';
+            const mesExample = character.mes_example || character['对话示例'] || character['示例'] || '';
+            
+            setLS('char_name', name);
+            let fullDesc = desc;
+            if (personality) fullDesc += '\n性格：' + personality;
+            if (scenario) fullDesc += '\n场景：' + scenario;
+            if (firstMes) fullDesc += '\n首条消息示例：' + firstMes;
+            if (mesExample) fullDesc += '\n对话示例：' + mesExample;
+            
+            // 如果以上全都没有，尝试把整个 JSON 的所有字符串值拼起来作为人设
+            if (!fullDesc.trim()) {
+              const allValues = [];
+              function extractStrings(obj, depth) {
+                if (depth > 3) return;
+                for (const key in obj) {
+                  if (typeof obj[key] === 'string' && obj[key].length > 5 && key !== 'name' && key !== '角色名' && key !== '名字') {
+                    allValues.push(`【${key}】：${obj[key]}`);
+                  } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                    extractStrings(obj[key], depth + 1);
+                  }
+                }
+              }
+              extractStrings(character, 0);
+              fullDesc = allValues.join('\n');
+            }
+            
             setLS('char_persona', fullDesc);
             
-            // 【修复1】提取并保存世界书
             const worldbookContent = extractWorldbookEntries(charData);
             setLS('char_worldbook', worldbookContent);
             if (worldbookContent) {
               worldbookInput.value = (getLS('worldbook') || '') + (getLS('worldbook') ? '\n' : '') + '（已从角色卡自动导入世界书）';
             }
             
-            charStatus.textContent = `当前角色: ${character.name}` + (worldbookContent ? ' ✅世界书已读取' : '');
-            alert("角色卡导入成功！" + (worldbookContent ? "\n🌍 世界书条目已自动提取！" : ""));
+            charStatus.textContent = `当前角色: ${name}` + (worldbookContent ? ' ✅世界书已读取' : '');
+            alert("角色卡导入成功！" + (worldbookContent ? "\n🌍 世界书条目已自动提取！" : "") + "\n角色名：" + name);
           } catch(err) { alert("JSON解析失败: " + err.message); }
         };
       }
@@ -1123,7 +1174,19 @@
     document.getElementById('avatar-btn').addEventListener('click', () => { setTempState('poke', 2500); fetchRealAIResponse("主控刚刚轻轻地戳了你一下进行互动。"); });
 
     const customColorBtn = document.getElementById('custom-color-btn'); const colorPicker = document.getElementById('color-picker');
-    customColorBtn.addEventListener('click', () => colorPicker.click());
+    // 【修复3】平板兼容：同时监听 click 和 touchend，强制触发颜色选择器
+    function triggerColorPicker(e) {
+      e.preventDefault(); e.stopPropagation();
+      colorPicker.style.position = 'fixed';
+      colorPicker.style.top = '50%';
+      colorPicker.style.left = '50%';
+      colorPicker.style.pointerEvents = 'auto';
+      colorPicker.focus();
+      colorPicker.click();
+      setTimeout(() => { colorPicker.style.top = '-100px'; colorPicker.style.left = '-100px'; colorPicker.style.pointerEvents = 'none'; }, 500);
+    }
+    customColorBtn.addEventListener('click', triggerColorPicker);
+    customColorBtn.addEventListener('touchend', triggerColorPicker);
     colorPicker.addEventListener('input', (e) => {
       const newColor = e.target.value; const r = parseInt(newColor.slice(1, 3), 16); const g = parseInt(newColor.slice(3, 5), 16); const b = parseInt(newColor.slice(5, 7), 16);
       document.documentElement.style.setProperty('--main-color-rgb', `${r}, ${g}, ${b}`);
